@@ -1,0 +1,57 @@
+x-depends_on: &default-depends_on
+  "db":
+    condition: service_healthy
+  "mail":
+    condition: service_started
+
+services:  
+  oro-common: &oro-common
+    image: $ORO_IMAGE:$ORO_IMAGE_TAG
+    env_file: .env
+    depends_on:
+      "php-fpm-app":
+        condition: service_healthy
+    volumes:
+      - cache:/var/www/oro/var/cache
+      - public:/var/www/oro/public
+      - public_storage:/var/www/oro/public/media
+      - private_storage:/var/www/oro/var/data
+
+  ws:
+    <<: *oro-common
+    command: websocket
+    restart: unless-stopped
+    user: ${ORO_USER_RUNTIME:-www-data}
+    init: true
+  
+  consumer:
+    <<: *oro-common
+    command: consumer
+    restart: unless-stopped
+    user: ${ORO_USER_RUNTIME:-www-data}
+    init: true
+
+  cron:
+    <<: *oro-common
+    command: cron
+    restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 1024
+        hard: 1048576
+
+  install:
+    <<: *oro-common
+    image: ${ORO_IMAGE_INIT}${ORO_LANGUAGE_SUFFIX-}:$ORO_IMAGE_TAG 
+    command: console oro:install --no-interaction --timeout=3600 --user-name="$ORO_USER_NAME" --user-email="$ORO_USER_EMAIL" --user-firstname="$ORO_USER_FIRSTNAME" --user-lastname="$ORO_USER_LASTNAME" --user-password="$ORO_USER_PASSWORD" --sample-data="$ORO_SAMPLE_DATA" --organization-name="$ORO_ORGANIZATION_NAME" --language=$ORO_LANGUAGE --formatting-code=$ORO_FORMATTING_CODE --application-url="$ORO_APP_PROTOCOL://$ORO_APP_DOMAIN" $ORO_INSTALL_OPTIONS
+    user: $ORO_USER_RUNTIME
+    depends_on:
+      <<: *default-depends_on
+
+  restore: &restore
+    <<: *oro-common
+    image: ${ORO_IMAGE_INIT}${ORO_LANGUAGE_SUFFIX-}:$ORO_IMAGE_TAG
+    command: restore
+    user: $ORO_USER_RUNTIME
+    depends_on:
+      <<: *default-depends_on

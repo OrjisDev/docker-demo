@@ -1,0 +1,27 @@
+services:
+  web:
+    image: $ORO_IMAGE:$ORO_IMAGE_TAG
+    command: nginx
+    env_file: .env
+    restart: unless-stopped
+    ports:
+      - target: 8080
+        published: 80
+        mode: host
+    depends_on:
+      "init":
+        condition: service_completed_successfully    
+      "php-fpm-app":
+        condition: service_healthy
+      "ws":
+        condition: service_started
+    networks:
+      default:
+        aliases:
+          - ${ORO_APP_DOMAIN}
+    volumes:
+      - cache:/var/www/oro/var/cache:ro
+      - public:/var/www/oro/public
+      - public_storage:/var/www/oro/public/media:ro
+      - private_storage:/var/www/oro/var/data:ro
+      - etc_nginx:/etc/nginx

@@ -1,0 +1,12 @@
+services:
+  application:
+    image: $ORO_IMAGE:$ORO_IMAGE_TAG
+    command: -- true
+    env_file: .env
+    depends_on:
+      "web":
+        condition: service_started
+      "consumer":
+        condition: service_started
+      "cron":
+        condition: service_started
